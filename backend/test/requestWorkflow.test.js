@@ -1,0 +1,4 @@
+import test from 'node:test'; import assert from 'node:assert/strict';
+import { allowedNext, canTransition } from '../src/utils/requestWorkflow.js';
+test('allows every defined workflow transition', () => { assert.equal(canTransition('pending', 'assigned'), true); assert.equal(canTransition('pending', 'cancelled'), true); assert.equal(canTransition('assigned', 'in_progress'), true); assert.equal(canTransition('assigned', 'cancelled'), true); assert.equal(canTransition('in_progress', 'completed'), true); });
+test('rejects skipped and terminal-state transitions', () => { assert.equal(canTransition('pending', 'completed'), false); assert.equal(canTransition('assigned', 'completed'), false); assert.equal(canTransition('completed', 'in_progress'), false); assert.equal(canTransition('cancelled', 'assigned'), false); assert.deepEqual(allowedNext('completed'), []); assert.deepEqual(allowedNext('unknown'), []); });
