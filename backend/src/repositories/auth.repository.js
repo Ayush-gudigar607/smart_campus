@@ -29,6 +29,11 @@ export const findDepartmentByName = async (name) => {
   return department;
 };
 
+export const findDepartmentById = async (id) => {
+  const [department] = await db.select({ name: departments.name }).from(departments).where(eq(departments.id, id)).limit(1);
+  return department;
+};
+
 export const createUser = async (data) => {
   const [user] = await db.insert(users).values(data).returning();
   return user;

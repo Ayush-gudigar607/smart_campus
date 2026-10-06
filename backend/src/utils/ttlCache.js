@@ -4,3 +4,4 @@
 const entries = new Map();
 export const get = (key) => { const entry = entries.get(key); if (!entry || entry.expiresAt <= Date.now()) { entries.delete(key); return undefined; } return entry.value; };
 export const set = (key, value, ttlMs) => entries.set(key, { value, expiresAt: Date.now() + ttlMs });
+export const clear = () => entries.clear();

@@ -6,9 +6,9 @@ import { departments, requests, services, users } from './schema/index.js';
 // These names are the public values accepted by the registration API.
 const departmentData = [
   ...['CSE', 'AIML', 'AIDS', 'CSBS', 'CSDS', 'ECE', 'EEE', 'MECH', 'AUTOMOBILE', 'AERONAUTICAL', 'MARINE'].map((name) => ({ name })),
-  { name: 'Hostel', description: 'Hostel administration and resident support' }, { name: 'IT', description: 'Campus technology support' }, { name: 'Library', description: 'Library services' }, { name: 'Maintenance', description: 'Campus facilities maintenance' }, { name: 'Academics', description: 'Academic records and certificates' },
+  { name: 'Hostel', description: 'Hostel administration and resident support' }, { name: 'IT', description: 'Campus technology support' }, { name: 'Library', description: 'Library services' }, { name: 'Maintenance', description: 'Campus facilities maintenance' }, { name: 'Academics', description: 'Academic records and certificates' }, { name: 'Laboratory', description: 'Lab equipment and technical support' }, { name: 'Student Affairs', description: 'Student leave and campus administration' },
 ];
-const serviceData = { Hostel: [['Room repair', 24], ['Mess complaint', 12]], IT: [['WiFi issue', 8], ['Account reset', 4]], Library: [['Book request', 72], ['Fine waiver', 48]], Maintenance: [['Electrical repair', 12], ['Plumbing repair', 24]], Academics: [['Bonafide certificate', 48], ['Marksheet copy', 72]] };
+const serviceData = { Hostel: [['Room repair', 24], ['Mess complaint', 12]], IT: [['WiFi issue', 8], ['Account reset', 4]], Library: [['Book request', 72], ['Fine waiver', 48]], Maintenance: [['Electrical repair', 12], ['Plumbing repair', 24]], Academics: [['Bonafide certificate', 48], ['Marksheet copy', 72]], Laboratory: [['Lab equipment booking', 24], ['Lab equipment repair', 24]], 'Student Affairs': [['Leave application', 48]] };
 const adminEmail = process.env.SEED_ADMIN_EMAIL?.toLowerCase() || 'admin@campus.local';
 const adminPassword = process.env.SEED_ADMIN_PASSWORD || 'Admin12345';
 
@@ -21,7 +21,7 @@ try {
     const [department] = await db.select({ id: departments.id }).from(departments).where(eq(departments.name, departmentName)).limit(1);
     for (const [name, slaHours] of catalog) {
       const existing = await db.select({ id: services.id }).from(services).where(eq(services.name, name)).limit(1);
-      if (!existing.length) await db.insert(services).values({ name, departmentId: department.id, slaHours });
+      await db.insert(services).values({ name, departmentId: department.id, slaHours, autoAssign: false }).onConflictDoUpdate({ target: services.name, set: { departmentId: department.id, slaHours, autoAssign: false } });
     }
   }
   const existingAdmin = await db.select({ id: users.id }).from(users).where(eq(users.email, adminEmail)).limit(1);
@@ -38,6 +38,19 @@ try {
     { name: 'Demo Student', email: 'student.demo@campus.local', passwordHash: await bcrypt.hash('Student123', 12), role: 'student', departmentId: it.id, rollNo: 'DEMO2026001', currentYear: 2 },
   ];
   for (const user of fixtureUsers) await db.insert(users).values(user).onConflictDoNothing();
+  const staffPasswordHash = await bcrypt.hash('Staff1234', 12);
+  const staffFixtures = [
+    { name: 'Hostel Support Staff', email: 'hostel.staff.demo@campus.local', department: 'Hostel' },
+    { name: 'Library Support Staff', email: 'library.staff.demo@campus.local', department: 'Library' },
+    { name: 'Maintenance Support Staff', email: 'maintenance.staff.demo@campus.local', department: 'Maintenance' },
+    { name: 'Academic Services Staff', email: 'academics.staff.demo@campus.local', department: 'Academics' },
+    { name: 'Laboratory Support Staff', email: 'laboratory.staff.demo@campus.local', department: 'Laboratory' },
+    { name: 'Student Affairs Staff', email: 'affairs.staff.demo@campus.local', department: 'Student Affairs' },
+  ];
+  for (const fixture of staffFixtures) {
+    const [department] = await db.select({ id: departments.id }).from(departments).where(eq(departments.name, fixture.department)).limit(1);
+    await db.insert(users).values({ name: fixture.name, email: fixture.email, passwordHash: staffPasswordHash, role: 'staff', departmentId: department.id }).onConflictDoNothing();
+  }
   const [staff] = await db.select({ id: users.id }).from(users).where(eq(users.email, 'it.staff.demo@campus.local')).limit(1);
   const [student] = await db.select({ id: users.id }).from(users).where(eq(users.email, 'student.demo@campus.local')).limit(1);
   const now = Date.now();

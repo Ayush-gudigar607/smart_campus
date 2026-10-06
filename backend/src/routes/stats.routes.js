@@ -11,4 +11,5 @@ router.get('/by-service',validate(serviceStatsQuerySchema,'query'),asyncHandler(
 router.get('/trend',validate(trendQuerySchema,'query'),asyncHandler(controller.trend));
 router.get('/staff-performance',validate(statsQuerySchema,'query'),asyncHandler(controller.staffPerformance));
 router.get('/dashboard',validate(statsQuerySchema,'query'),asyncHandler(controller.dashboard));
+router.get('/workload',asyncHandler(controller.workload));
 export default router;

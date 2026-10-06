@@ -1,5 +1,21 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
-import * as controller from '../controllers/request.controller.js'; import { authenticate } from '../middleware/authenticate.js'; import { requireRole } from '../middleware/requireRole.js'; import { validate } from '../middleware/validate.js'; import { assignRequestSchema, createRequestSchema, mineQuerySchema, requestCodeSchema, updateStatusSchema } from '../schemas/request.schema.js'; import { asyncHandler } from '../utils/asyncHandler.js';
-const router = Router(); const createLimiter = rateLimit({ windowMs: 60 * 60 * 1000, limit: 20, standardHeaders: 'draft-7', legacyHeaders: false, keyGenerator: (req) => `student-${req.user.id}`, message: { success: false, message: 'Too many request submissions. Try again later.' } });
-router.use(authenticate); router.post('/', requireRole('student'), createLimiter, validate(createRequestSchema), asyncHandler(controller.submit)); router.get('/mine', requireRole('student'), validate(mineQuerySchema, 'query'), asyncHandler(controller.mine)); router.get('/mine/summary', requireRole('student'), asyncHandler(controller.mineSummary)); router.patch('/:code/assign', requireRole('admin'), validate(requestCodeSchema, 'params'), validate(assignRequestSchema), asyncHandler(controller.assign)); router.patch('/:code/status', requireRole('admin', 'staff'), validate(requestCodeSchema, 'params'), validate(updateStatusSchema), asyncHandler(controller.status)); router.get('/:code/history', validate(requestCodeSchema, 'params'), asyncHandler(controller.history)); router.get('/:code', validate(requestCodeSchema, 'params'), asyncHandler(controller.get)); router.patch('/:code/cancel', requireRole('student'), validate(requestCodeSchema, 'params'), asyncHandler(controller.cancel)); export default router;
+import * as controller from '../controllers/request.controller.js';
+import { authenticate } from '../middleware/authenticate.js';
+import { requireRole } from '../middleware/requireRole.js';
+import { validate } from '../middleware/validate.js';
+import { assignRequestSchema, createRequestSchema, mineQuerySchema, requestCodeSchema, updateStatusSchema, priorityChangeSchema } from '../schemas/request.schema.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+
+const router = Router();
+router.use(authenticate);
+router.post('/', requireRole('student'), validate(createRequestSchema), asyncHandler(controller.submit));
+router.get('/mine', requireRole('student'), validate(mineQuerySchema, 'query'), asyncHandler(controller.mine));
+router.get('/mine/summary', requireRole('student'), asyncHandler(controller.mineSummary));
+router.post('/:code/auto-assign', requireRole('admin'), validate(requestCodeSchema, 'params'), asyncHandler(controller.autoAssign));
+router.patch('/:code/priority', requireRole('admin'), validate(requestCodeSchema, 'params'), validate(priorityChangeSchema), asyncHandler(controller.priority));
+router.patch('/:code/assign', requireRole('admin'), validate(requestCodeSchema, 'params'), validate(assignRequestSchema), asyncHandler(controller.assign));
+router.patch('/:code/status', requireRole('admin', 'staff'), validate(requestCodeSchema, 'params'), validate(updateStatusSchema), asyncHandler(controller.status));
+router.get('/:code/history', validate(requestCodeSchema, 'params'), asyncHandler(controller.history));
+router.get('/:code', validate(requestCodeSchema, 'params'), asyncHandler(controller.get));
+router.patch('/:code/cancel', requireRole('student'), validate(requestCodeSchema, 'params'), asyncHandler(controller.cancel));
+export default router;

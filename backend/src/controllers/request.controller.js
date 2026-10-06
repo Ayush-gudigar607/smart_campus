@@ -7,3 +7,5 @@ export const cancel = async (req, res) => res.json({ success: true, data: await 
 export const assign = async (req, res) => res.json({ success: true, data: await service.assign(req.params.code, req.body, req.user) });
 export const status = async (req, res) => res.json({ success: true, data: await service.updateStatus(req.params.code, req.body, req.user) });
 export const history = async (req, res) => res.json({ success: true, data: await service.history(req.params.code, req.user) });
+export const autoAssign = async(req,res)=>res.json({success:true,data:await service.autoAssign(req.params.code)});
+export const priority = async(req,res)=>res.json({success:true,data:await service.updatePriority(req.params.code,req.body)});

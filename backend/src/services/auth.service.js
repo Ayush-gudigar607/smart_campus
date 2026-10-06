@@ -6,6 +6,10 @@ import { signToken } from '../utils/jwt.js';
 const SALT_ROUNDS = 12;
 const publicUser = ({ passwordHash, ...user }) => user;
 const tokenFor = (user) => signToken({ id: user.id, role: user.role });
+const withDepartment = async (user) => {
+  const department = user.departmentId ? await authRepository.findDepartmentById(user.departmentId) : null;
+  return { ...user, department: department?.name || null };
+};
 
 export async function register(input) {
   const { studentName, usn, department, confirmPassword, ...student } = input;
@@ -20,21 +24,21 @@ export async function register(input) {
     departmentId: departmentRecord.id, currentYear: student.currentYear,
     mobileNumber: student.mobileNumber, role: 'student',
   });
-  return { user: publicUser(user), token: tokenFor(user) };
+  return { user: publicUser(await withDepartment(user)), token: tokenFor(user) };
 }
 
 export async function login({ emailOrRollNo, password }) {
   const user = await authRepository.findUserByEmailOrRollNo(emailOrRollNo);
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) throw new AppError('Invalid email or password', 401);
   if (!user.isActive) throw new AppError('This account is inactive', 403);
-  return { user: publicUser(user), token: tokenFor(user) };
+  return { user: publicUser(await withDepartment(user)), token: tokenFor(user) };
 }
 
 export async function getCurrentUser(id) {
   const user = await authRepository.findUserById(id);
   if (!user) throw new AppError('User not found', 404);
   if (!user.isActive) throw new AppError('This account is inactive', 403);
-  return publicUser(user);
+  return publicUser(await withDepartment(user));
 }
 
 export async function changePassword(id, { currentPassword, newPassword }) {
@@ -50,5 +54,5 @@ export async function createUser(input) {
   if (await authRepository.findUserByEmail(input.email)) throw new AppError('Email is already registered', 409);
 
   const passwordHash = await bcrypt.hash(input.password, SALT_ROUNDS);
-  return publicUser(await authRepository.createUser({ ...userInput, passwordHash, departmentId: departmentRecord?.id }));
+  return publicUser(await withDepartment(await authRepository.createUser({ ...userInput, passwordHash, departmentId: departmentRecord?.id })));
 }

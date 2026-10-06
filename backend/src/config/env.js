@@ -6,13 +6,16 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   JWT_EXPIRES_IN: z.string().default('1d'),
-  CLIENT_ORIGIN: z.string().url(),
+  // Comma-separated browser origins. Native Expo Go requests have no Origin header.
+  CLIENT_ORIGIN: z.string().min(1),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   MAX_ACTIVE_PER_STAFF: z.coerce.number().int().positive().default(10),
   ESCALATION_L2_HOURS: z.coerce.number().positive().default(24),
   UNASSIGNED_ALERT_HOURS: z.coerce.number().positive().default(4),
   ESCALATION_CRON: z.string().default('*/15 * * * *'),
   RUN_JOBS: z.string().default('true').transform(v => v !== 'false'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   SMTP_HOST: z.string().optional(), SMTP_PORT: z.coerce.number().default(1025), SMTP_USER: z.string().optional(), SMTP_PASS: z.string().optional(), MAIL_FROM: z.string().email().default('noreply@campus.local'), FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 });
 
@@ -22,3 +25,4 @@ if (!parsed.success) {
   throw new Error('Invalid environment configuration');
 }
 export const env = parsed.data;
+export const clientOrigins = env.CLIENT_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean);

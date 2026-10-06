@@ -1,0 +1,3 @@
+import { Server } from 'socket.io'; import { verifyToken } from '../utils/jwt.js'; import { clientOrigins } from '../config/env.js';
+let io; export function attachSocket(server) { io=new Server(server,{cors:{origin:clientOrigins,credentials:true}}); io.use((socket,next)=>{try { const token=socket.handshake.auth?.token || socket.handshake.headers.authorization?.replace(/^Bearer /,''); socket.user=verifyToken(token); next(); } catch { next(new Error('Authentication required')); }}); io.on('connection',socket=>socket.join(`user:${socket.user.id}`)); return io; }
+export const pushNotification=(userId,notification)=>io?.to(`user:${userId}`).emit('notification:new',notification);

@@ -43,6 +43,13 @@
       "when": 1791275000000,
       "tag": "0005_stats_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791276000000,
+      "tag": "0006_bonus_features",
+      "breakpoints": true
     }
   ]
 }
