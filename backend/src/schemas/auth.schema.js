@@ -4,7 +4,7 @@ const password = z.string().min(8, 'Password must be at least 8 characters')
   .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
   .regex(/\d/, 'Password must contain at least one number');
 const email = z.string().trim().email('Enter a valid email').transform((value) => value.toLowerCase());
-export const DEPARTMENTS = ['CSE', 'AIML', 'AIDS', 'CSBS', 'CSDS', 'ECE', 'EEE', 'MECH', 'AUTOMOBILE', 'AERONAUTICAL', 'MARINE'];
+export const DEPARTMENTS = ['CSE', 'AIML', 'AIDS', 'CSBS', 'CSDS', 'ECE', 'EEE', 'MECH', 'AUTOMOBILE', 'AERONAUTICAL', 'MARINE', 'Hostel', 'IT', 'Library', 'Maintenance', 'Academics'];
 const department = z.string().trim().transform((value) => value.toUpperCase()).pipe(z.enum(DEPARTMENTS));
 
 export const registerSchema = z.object({
