@@ -1,0 +1,134 @@
+{
+  "info": {
+    "_postman_id": "bb6d0c28-fb60-4d56-bde2-82c5941a8a01",
+    "name": "Campus Service API",
+    "description": "Run the requests in order. Start the API, run database migrations, and seed departments/admin first.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "studentPassword", "value": "Campus123" },
+    { "key": "newStudentPassword", "value": "Campus456" },
+    { "key": "adminEmail", "value": "admin@campus.local" },
+    { "key": "adminPassword", "value": "Admin12345" }
+  ],
+  "item": [
+    {
+      "name": "01 - Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Health endpoint returns 200', () => pm.response.to.have.status(200));", "pm.test('Response is successful', () => pm.expect(pm.response.json().success).to.eql(true));"] } }]
+    },
+    {
+      "name": "02 - Register student (happy path)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"studentName\": \"Asha Patel\",\n  \"usn\": \"CS{{$timestamp}}\",\n  \"department\": \"CSE\",\n  \"currentYear\": 2,\n  \"email\": \"student{{$timestamp}}@example.com\",\n  \"mobileNumber\": \"98765{{$timestamp}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"confirmPassword\": \"{{studentPassword}}\"\n}" },
+        "url": "{{baseUrl}}/api/auth/register"
+      },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student is created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "pm.test('No password hash is exposed', () => pm.expect(body.data.user).not.to.have.property('passwordHash'));", "pm.collectionVariables.set('studentToken', body.data.token);", "pm.collectionVariables.set('studentEmail', body.data.user.email);", "pm.collectionVariables.set('studentUsn', body.data.user.rollNo);", "pm.collectionVariables.set('studentMobile', body.data.user.mobileNumber);"] } }]
+    },
+    {
+      "name": "03 - Login with email",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"emailOrRollNo\": \"{{studentEmail}}\",\n  \"password\": \"{{studentPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/login" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Email login succeeds', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('studentToken', pm.response.json().data.token);"] } }]
+    },
+    {
+      "name": "04 - Login with USN",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"emailOrRollNo\": \"{{studentUsn}}\",\n  \"password\": \"{{studentPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/login" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('USN login succeeds', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('studentToken', pm.response.json().data.token);"] } }]
+    },
+    {
+      "name": "05 - Current student profile",
+      "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/auth/me" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Profile is returned', () => pm.response.to.have.status(200));", "pm.test('Profile contains USN and mobile', () => { const user = pm.response.json().data; pm.expect(user.rollNo).to.eql(pm.collectionVariables.get('studentUsn')); pm.expect(user.mobileNumber).to.eql(pm.collectionVariables.get('studentMobile')); });"] } }]
+    },
+    {
+      "name": "06 - Duplicate student is rejected",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"studentName\": \"Duplicate Student\",\n  \"usn\": \"{{studentUsn}}\",\n  \"department\": \"CSE\",\n  \"currentYear\": 2,\n  \"email\": \"{{studentEmail}}\",\n  \"mobileNumber\": \"{{studentMobile}}\",\n  \"password\": \"{{studentPassword}}\",\n  \"confirmPassword\": \"{{studentPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/register" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Duplicate data returns 409', () => pm.response.to.have.status(409));"] } }]
+    },
+    {
+      "name": "07 - Mismatched passwords are rejected",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"studentName\": \"Test Student\",\n  \"usn\": \"TEST{{$timestamp}}\",\n  \"department\": \"CSE\",\n  \"currentYear\": 1,\n  \"email\": \"test{{$timestamp}}@example.com\",\n  \"mobileNumber\": \"98888{{$timestamp}}\",\n  \"password\": \"Campus123\",\n  \"confirmPassword\": \"Different123\"\n}" }, "url": "{{baseUrl}}/api/auth/register" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Password mismatch returns 400', () => pm.response.to.have.status(400));"] } }]
+    },
+    {
+      "name": "08 - Invalid login is generic",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"emailOrRollNo\": \"{{studentEmail}}\",\n  \"password\": \"WrongPassword123\"\n}" }, "url": "{{baseUrl}}/api/auth/login" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Invalid credentials return 401', () => pm.response.to.have.status(401));", "pm.test('Error message does not reveal which field failed', () => pm.expect(pm.response.json().message).to.eql('Invalid email or password'));"] } }]
+    },
+    {
+      "name": "09 - Change student password",
+      "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"currentPassword\": \"{{studentPassword}}\",\n  \"newPassword\": \"{{newStudentPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/change-password" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Password is changed', () => pm.response.to.have.status(200));"] } }]
+    },
+    {
+      "name": "10 - Student cannot create staff",
+      "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Blocked Staff\",\n  \"email\": \"blocked{{$timestamp}}@example.com\",\n  \"password\": \"Staff1234\",\n  \"role\": \"staff\",\n  \"department\": \"CSE\"\n}" }, "url": "{{baseUrl}}/api/admin/users" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student receives 403', () => pm.response.to.have.status(403));"] } }]
+    },
+    {
+      "name": "11 - Admin login (requires seed)",
+      "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"emailOrRollNo\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}" }, "url": "{{baseUrl}}/api/auth/login" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Admin login succeeds', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('adminToken', pm.response.json().data.token);"] } }]
+    },
+    {
+      "name": "12 - Admin creates staff",
+      "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"CSE Support\",\n  \"email\": \"cse.support{{$timestamp}}@example.com\",\n  \"password\": \"Staff1234\",\n  \"role\": \"staff\",\n  \"department\": \"CSE\"\n}" }, "url": "{{baseUrl}}/api/admin/users" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Admin creates staff', () => pm.response.to.have.status(201));", "pm.test('Created user is staff', () => pm.expect(pm.response.json().data.role).to.eql('staff'));"] } }]
+    },
+    {
+      "name": "13 - Catalog tests",
+      "item": [
+        {
+          "name": "List services - pagination, search, sort",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/services?q=repair&sort=slaHours&order=asc&page=1&limit=2" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Catalog is paginated', () => pm.response.to.have.status(200));", "const data = pm.response.json().data;", "pm.expect(data).to.have.keys(['items', 'total', 'page', 'limit']);", "pm.expect(data.limit).to.eql(2);"] } }]
+        },
+        {
+          "name": "Student cannot create service",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"Blocked service {{$timestamp}}\",\n  \"departmentId\": 1\n}" }, "url": "{{baseUrl}}/api/services" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student receives 403', () => pm.response.to.have.status(403));"] } }]
+        },
+        {
+          "name": "Duplicate service name is rejected",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"name\": \"WiFi issue\",\n  \"departmentId\": 1\n}" }, "url": "{{baseUrl}}/api/services" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Duplicate service returns 409', () => pm.response.to.have.status(409));"] } }]
+        },
+        {
+          "name": "Find Hostel department id",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/departments" },
+          "event": [{ "listen": "test", "script": { "exec": ["const hostel = pm.response.json().data.find((department) => department.name === 'Hostel');", "pm.expect(hostel).to.exist;", "pm.collectionVariables.set('hostelDepartmentId', hostel.id);"] } }]
+        },
+        {
+          "name": "Cannot delete department with active services",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/departments/{{hostelDepartmentId}}" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Active services block deletion with 409', () => pm.response.to.have.status(409));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "14 - Service request tests",
+      "item": [
+        {
+          "name": "Submit request as student",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"serviceId\": 1,\n  \"title\": \"Network support needed\",\n  \"description\": \"Please help with the campus WiFi connection.\",\n  \"location\": \"Block A, Room 101\"\n}" }, "url": "{{baseUrl}}/api/requests" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Request is submitted', () => pm.response.to.have.status(201));", "const request = pm.response.json().data;", "pm.expect(request.requestCode).to.match(/^SR-\\d{4}-\\d{6}$/);", "pm.collectionVariables.set('requestCode', request.requestCode);"] } }]
+        },
+        { "name": "Admin cannot submit request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":1,\"title\":\"Admin blocked request\",\"description\":\"This must be rejected.\"}" }, "url": "{{baseUrl}}/api/requests" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Admin receives 403', () => pm.response.to.have.status(403));"] } }] },
+        { "name": "Invalid service returns 404", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":999999,\"title\":\"Unknown service request\",\"description\":\"No matching service exists.\"}" }, "url": "{{baseUrl}}/api/requests" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Unknown service returns 404', () => pm.response.to.have.status(404));"] } }] },
+        { "name": "Missing title returns 400", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"serviceId\":1,\"description\":\"Title is intentionally missing.\"}" }, "url": "{{baseUrl}}/api/requests" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Validation returns 400', () => pm.response.to.have.status(400));"] } }] },
+        { "name": "View own request", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/requests/{{requestCode}}" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Student can view own request', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "List my requests with pagination", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/requests/mine?page=1&limit=2" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Paginated requests are returned', () => pm.response.to.have.status(200));", "pm.expect(pm.response.json().data.limit).to.eql(2);"] } }] },
+        { "name": "Cancel pending request", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/requests/{{requestCode}}/cancel" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Pending request is cancelled', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Cancel already cancelled request", "request": { "method": "PATCH", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/requests/{{requestCode}}/cancel" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Second cancel returns 409', () => pm.response.to.have.status(409));"] } }] }
+      ]
+    },
+    {
+      "name": "15 - Logout",
+      "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{studentToken}}" }], "url": "{{baseUrl}}/api/auth/logout" },
+      "event": [{ "listen": "test", "script": { "exec": ["pm.test('Logout succeeds', () => pm.response.to.have.status(200));"] } }]
+    }
+  ]
+}

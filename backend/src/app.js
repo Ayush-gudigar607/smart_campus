@@ -1,0 +1,27 @@
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+import { env } from './config/env.js';
+import authRoutes, { adminUsersRouter } from './routes/auth.routes.js';
+import departmentRoutes from './routes/department.routes.js';
+import serviceRoutes from './routes/service.routes.js';
+import userRoutes from './routes/user.routes.js';
+import requestRoutes from './routes/request.routes.js';
+import { errorHandler } from './middleware/errorHandler.js';
+
+const app = express();
+app.use(helmet());
+app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+app.use(express.json({ limit: '10kb' }));
+app.use(cookieParser());
+app.get('/health', (_req, res) => res.json({ success: true, data: { status: 'ok' } }));
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminUsersRouter);
+app.use('/api/departments', departmentRoutes);
+app.use('/api/services', serviceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/requests', requestRoutes);
+app.use((_req, _res, next) => { const error = new Error('Route not found'); error.statusCode = 404; error.isOperational = true; next(error); });
+app.use(errorHandler);
+export default app;
