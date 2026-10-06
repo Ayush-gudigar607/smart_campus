@@ -1,0 +1,14 @@
+import { Router } from 'express';
+import * as controller from '../controllers/stats.controller.js';
+import { authenticate } from '../middleware/authenticate.js';
+import { validate } from '../middleware/validate.js';
+import { statsQuerySchema, serviceStatsQuerySchema, trendQuerySchema } from '../schemas/stats.schema.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+const router=Router(); router.use(authenticate);
+router.get('/overview',validate(statsQuerySchema,'query'),asyncHandler(controller.overview));
+router.get('/by-department',validate(statsQuerySchema,'query'),asyncHandler(controller.byDepartment));
+router.get('/by-service',validate(serviceStatsQuerySchema,'query'),asyncHandler(controller.byService));
+router.get('/trend',validate(trendQuerySchema,'query'),asyncHandler(controller.trend));
+router.get('/staff-performance',validate(statsQuerySchema,'query'),asyncHandler(controller.staffPerformance));
+router.get('/dashboard',validate(statsQuerySchema,'query'),asyncHandler(controller.dashboard));
+export default router;

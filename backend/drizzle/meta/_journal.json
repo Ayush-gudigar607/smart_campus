@@ -29,6 +29,20 @@
       "when": 1791272092827,
       "tag": "0003_gorgeous_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791273686878,
+      "tag": "0004_funny_swarm",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791275000000,
+      "tag": "0005_stats_indexes",
+      "breakpoints": true
     }
   ]
 }

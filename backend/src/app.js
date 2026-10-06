@@ -8,6 +8,8 @@ import departmentRoutes from './routes/department.routes.js';
 import serviceRoutes from './routes/service.routes.js';
 import userRoutes from './routes/user.routes.js';
 import requestRoutes from './routes/request.routes.js';
+import staffRoutes from './routes/staff.routes.js';
+import statsRoutes from './routes/stats.routes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const app = express();
@@ -22,6 +24,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/staff', staffRoutes);
+app.use('/api/stats', statsRoutes);
 app.use((_req, _res, next) => { const error = new Error('Route not found'); error.statusCode = 404; error.isOperational = true; next(error); });
 app.use(errorHandler);
 export default app;

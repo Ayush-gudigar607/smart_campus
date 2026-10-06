@@ -4,3 +4,4 @@ export * from './services.js';
 export * from './requests.js';
 export * from './requestHistory.js';
 export * from './users.js';
+export * from './notifications.js';

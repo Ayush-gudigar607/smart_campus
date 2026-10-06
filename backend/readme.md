@@ -40,6 +40,39 @@ docker compose down -v              # Stop containers and delete database data
 docker compose logs -f backend      # Follow API logs
 ```
 
+To generate a later schema migration and apply it through Compose:
+
+```powershell
+docker compose exec backend npm run db:generate
+docker compose exec backend npm run db:migrate
+```
+
+## Statistics API
+
+Authenticated administrators and staff can use `/api/stats/overview`, `/by-service`,
+`/trend`, `/staff-performance`, and `/dashboard`; `/by-department` is administrator
+only. Staff statistics are always restricted to the staff member's department (or own
+row for staff performance), regardless of a supplied `departmentId`. Dashboard replies
+include `X-Cache: MISS` on the first request and `X-Cache: HIT` for an equivalent request
+within 30 seconds.
+
+The statistics-index migration is already included. Apply it in Docker Compose:
+
+```powershell
+docker compose exec backend npm run db:migrate
+```
+
+For a future schema change, generate then apply its migration with
+`docker compose exec backend npm run db:generate` followed by
+`docker compose exec backend npm run db:migrate`.
+
+Statistics checks:
+
+- As admin, compare `/api/stats/overview` total with the corresponding filtered request list total; call `/api/stats/dashboard` twice and verify `MISS`, then `HIT`.
+- As staff, pass another department ID to overview and verify only the staff department is counted. As a student, every stats endpoint returns 403.
+- Confirm `/by-department` includes an unused department, `/by-department` as staff returns 403, and `trend?interval=week` includes empty buckets. A range producing more than 366 buckets and an invalid date both return 400.
+- Choose two completed requests that took 2 and 4 hours: their average resolution time must be 3.0 hours. An empty date range returns `avgResolutionHours: null`.
+
 ## Authentication endpoints
 
 An importable request collection with automated status and response checks is available at `postman/Campus-Service-API.postman_collection.json`. Import it into Postman, ensure the API and seeded database are running, then run the requests in numerical order.
@@ -76,6 +109,12 @@ curl -X POST http://localhost:5000/api/admin/users -H "Authorization: Bearer ADM
 - Change password, confirm the old password no longer works, and log in with the new one.
 - Use a student token on `/api/admin/users` (403), then an admin token to create staff; use a nonexistent department (400).
 - Make more than 10 login/register attempts in 15 minutes from one IP and verify a 429 response.
+- As an admin, assign a pending request, then reassign it; verify the request history records the staff names and `reassignCount` increments.
+- Attempt to reassign to the same staff member and to a completed request; both return 409. Attempt a staff member from a different department without moving the department; it returns 400.
+- Move a request to another department with a staff member from that department; verify the assignment and history note.
+- As staff, open `/api/staff/queue?sort=dueAt`; verify only that staff member’s requests appear, ordering works, and a past due date has `isOverdue: true`.
+- As a student, verify `/api/staff/queue` returns 403, then compare `/api/requests/mine/summary` counts to the filtered/unfiltered request list.
+- Verify `/api/requests/mine/summary` returns the summary response rather than a request-code validation error.
 
 ## Login request flow
 

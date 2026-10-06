@@ -1,0 +1,13 @@
+import * as repository from '../repositories/stats.repository.js';
+import { AppError } from '../utils/AppError.js';
+import * as cache from '../utils/ttlCache.js';
+
+const scoped = (user, query) => { if (user.role === 'student') throw new AppError('You do not have permission for this action', 403); const to = query.to || new Date(); const from = query.from || new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000); return { ...query, from, to, departmentId: user.role === 'staff' ? user.departmentId : query.departmentId }; };
+const onlyAdmin = (user) => { if (user.role !== 'admin') throw new AppError('You do not have permission for this action', 403); };
+const verifyBuckets = (filters) => { const sizes = { day: 86400000, week: 604800000, month: 2629800000 }; if (Math.ceil((filters.to - filters.from) / sizes[filters.interval]) + 1 > 366) throw new AppError('Date range produces more than 366 buckets', 400); };
+export const getOverview = (user, query) => repository.overview(scoped(user, query));
+export const getByDepartment = (user, query) => { onlyAdmin(user); return repository.byDepartment(scoped(user, query)); };
+export const getByService = (user, query) => repository.byService(scoped(user, query));
+export const getTrend = (user, query) => { const filters = scoped(user, query); verifyBuckets(filters); return repository.trend(filters); };
+export const getStaffPerformance = (user, query) => repository.staffPerformance(scoped(user, query), user.role === 'staff' ? user.id : (onlyAdmin(user), null));
+export async function getDashboard(user, query) { const filters = scoped(user, query); const key = `${user.role}:${user.departmentId || 'all'}:${JSON.stringify(query)}`; const hit = cache.get(key); if (hit) return { data: hit, cache: 'HIT' }; const [overview, topServices, trend, recentRequests, overdueList, departmentBreakdown] = await Promise.all([repository.overview(filters), repository.byService({ ...filters, limit: 5 }), repository.trend({ ...filters, from: new Date(filters.to.getTime() - 13 * 86400000), interval: 'day' }), repository.recentRequests(filters), repository.overdueList(filters), user.role === 'admin' ? repository.byDepartment(filters) : Promise.resolve(undefined)]); const data = { overview, topServices, ...(departmentBreakdown ? { departmentBreakdown } : {}), trend, recentRequests, overdueList }; cache.set(key, data, 30000); return { data, cache: 'MISS' }; }

@@ -10,6 +10,7 @@ export const services = pgTable('services', {
   departmentId: integer('department_id').notNull().references(() => departments.id, { onDelete: 'restrict' }),
   slaHours: integer('sla_hours').notNull().default(48),
   defaultPriority: servicePriorityEnum('default_priority').notNull().default('medium'),
+  autoAssign: boolean('auto_assign').notNull().default(true),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
